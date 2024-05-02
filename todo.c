@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <strings.h>
-#include <cjson/cJSON.h>
+#include "cJSON.h"
 
 struct Todo {
     int completed;
@@ -9,26 +9,15 @@ struct Todo {
 };
 
 int main() {
-    cJSON *json = cJSON_CreateObject();
-
-    if (json == NULL)
-    {
-        free(json);
-        printf("Failed to initialize JSON object\n");
-        return 1;
-    }
-
-    cJSON_Delete(json);
-    return 0;
-}
-
-int old_main() {
     printf("Todo manager\n");
 
     struct Todo *todos = (struct Todo *)malloc(0);
     int counter = 0;
     char option;
     int indexToComplete;
+    char newTodoTitle[256];
+
+    cJSON *json;
 
     while(1) {
         printf("Menu:\n");
@@ -43,7 +32,10 @@ int old_main() {
         switch(option) {
             case 'a':
             case 'A':
-                strcpy(todos[counter].title, "Test");
+                printf("Enter a new title for your todo: ");
+                scanf(" %s", newTodoTitle);
+
+                strcpy(todos[counter].title, newTodoTitle);
                 todos[counter].completed = 0;
                 counter++;
             break;
@@ -52,14 +44,8 @@ int old_main() {
                 printf("Enter a number of a todo to complete: ");
                 scanf(" %d", &indexToComplete);
 
-                int amountOfTodos = sizeof(*todos) / sizeof(todos[0]);
-
-                if (indexToComplete > amountOfTodos) {
-                    printf("Entered number %d does not exist.\n", indexToComplete);
-                } else {
-                    todos[indexToComplete + -1].completed = 1;
-                    printf("Completed todo: %d\n", indexToComplete);
-                }
+                todos[indexToComplete + -1].completed = 1;
+                printf("Completed todo: %d\n", indexToComplete);
             break;
             case 'p':
             case 'P':
@@ -73,13 +59,29 @@ int old_main() {
             break;
             case 's':
             case 'S':
-                //cJSON *root = cJSON_CreateObject();
-                //cJSON_AddStringToObject(root, "name", "John");
+                json = cJSON_CreateArray();
 
-                //char *json_string = cJSON_Print(root);
+                for (int i = 0; i < counter; i++) {
+                    cJSON *todoObj = cJSON_CreateObject();
+                    cJSON_AddStringToObject(todoObj, "title", todos[i].title);
+                    cJSON_AddNumberToObject(todoObj, "completed", todos[i].completed);
+                    cJSON_AddItemToArray(json, todoObj);
+                }
 
-                //cJSON_Delete(root);
-                //free(json_string);
+                char *json_string = cJSON_Print(json);
+
+                FILE *file = fopen("todos.json", "w");
+                if (file == NULL)
+                {
+                    printf("Could not open todos.json\n");
+                    return 1;
+                }
+
+                fwrite(json_string, 1, strlen(json_string), file);
+                fclose(file);
+
+                cJSON_Delete(json);
+                free(json_string);
             break;
             case 'q':
             case 'Q':
